@@ -1,128 +1,96 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
+#include <string.h>
 #include <time.h>
-#include <string.h> 
-#include "catlib.h" 
+#include "catlib.h"
 #include "seismic_waves.h"
 
 #define PROGRESS_BAR 100
 
-// ... (функции calculateCollision, applyCollisions и transportParticles оставляем те же) ...
-// Я продублирую их ниже для полноты картины, чтобы вы могли скопировать файл целиком.
-
-// --- Логика столкновения (HPP модель) ---
-uint8_t calculateCollision(uint8_t cur)
+// === ЛОГИКА СТОЛКНОВЕНИЙ (HPP MODEL) ===
+// HPP правило: если частицы летят навстречу друг другу (Head-On) и нет боковых,
+// они поворачивают на 90 градусов.
+int collision(void *n)
 {
-    uint8_t new_state = 0;
-    uint8_t pos = cur & ALL_POSITIVE;
-    uint8_t neg = cur & ALL_NEGATIVE;
+    cellBody *cell = (cellBody*) n;
+    uint8_t state = cell->bits;
+    uint8_t new_state = state;
 
-    int pos_count = __builtin_popcount((unsigned)pos);
-    int neg_count = __builtin_popcount((unsigned)neg);
-
-    // Столкновения положительных частиц
-    if (pos_count == 2) {
-        if ((pos & (POS_RIGHT | POS_LEFT)) == (POS_RIGHT | POS_LEFT)) {
-            new_state |= (POS_UP | POS_DOWN);
-        }
-        else if ((pos & (POS_UP | POS_DOWN)) == (POS_UP | POS_DOWN)) {
-            new_state |= (POS_RIGHT | POS_LEFT);
-        }
-        else {
-            new_state |= pos; 
-        }
-    } else {
-        new_state |= pos;
+    // --- Обработка положительных частиц (биты 0-3) ---
+    uint8_t p = state & P_MASK;
+    // Проверка на Head-On столкновение по горизонтали: Right(1) + Left(4) = 5
+    // И отсутствие вертикальных частиц (чтобы не было тройных столкновений)
+    if (p == (P_RIGHT | P_LEFT)) {
+        new_state &= ~P_MASK;        // Очищаем pos биты
+        new_state |= (P_UP | P_DOWN); // Поворачиваем в Up/Down
+    }
+    // Проверка на Head-On по вертикали: Up(2) + Down(8) = 10
+    else if (p == (P_UP | P_DOWN)) {
+        new_state &= ~P_MASK;
+        new_state |= (P_RIGHT | P_LEFT);
     }
 
-    // Столкновения отрицательных частиц
-    if (neg_count == 2) {
-        if ((neg & (NEG_RIGHT | NEG_LEFT)) == (NEG_RIGHT | NEG_LEFT)) {
-            new_state |= (NEG_UP | NEG_DOWN);
-        }
-        else if ((neg & (NEG_UP | NEG_DOWN)) == (NEG_UP | NEG_DOWN)) {
-            new_state |= (NEG_RIGHT | NEG_LEFT);
-        }
-        else {
-            new_state |= neg;
-        }
-    } else {
-        new_state |= neg;
+    // --- Обработка отрицательных частиц (биты 4-7) ---
+    uint8_t n_part = state & N_MASK;
+    // Right(10h) + Left(40h) = 50h
+    if (n_part == (N_RIGHT | N_LEFT)) {
+        new_state &= ~N_MASK;
+        new_state |= (N_UP | N_DOWN);
+    }
+    // Up(20h) + Down(80h) = A0h (160 dec)
+    else if (n_part == (N_UP | N_DOWN)) {
+        new_state &= ~N_MASK;
+        new_state |= (N_RIGHT | N_LEFT);
     }
 
-    return new_state;
+    // Записываем результат обратно
+    cell->bits = new_state;
+    return 0;
 }
 
-void applyCollisions(int width, int height)
-{
-    cellBody cell;
-    for (int i = 0; i < width; i++) {
-        for (int j = 0; j < height; j++) {
-            CAT_GetCell((char*)&cell, i, j);
-            
-            uint8_t oldDir = cell.directions;
-            uint8_t newDir = calculateCollision(oldDir);
-
-            if (newDir != oldDir) {
-                cell.directions = newDir;
-                CAT_PutCell((char*)&cell, i, j);
-            }
-        }
-    }
-}
-
-void transportParticles(int width, int height)
-{
-    int sizeBytes = width * height * sizeof(uint8_t);
-    uint8_t *next_grid = malloc(sizeBytes);
-    
-    if (!next_grid) {
-        fprintf(stderr, "Error: malloc failed in transportParticles\n");
-        exit(1);
-    }
-    memset(next_grid, 0, sizeBytes);
+// === ЛОГИКА ПЕРЕМЕЩЕНИЯ (PROPAGATION) ===
+// Используем двойную буферизацию, чтобы избежать гонок данных
+void propagation_step(int width, int height) {
+    // Временный массив для следующего шага
+    // row-major order: index = j * width + i
+    uint8_t *next_grid = (uint8_t*)calloc(width * height, sizeof(uint8_t));
+    if (!next_grid) exit(1);
 
     cellBody cell;
 
-    // Шаг 1: Читаем и переносим во временный буфер
+    // 1. Чтение и разлет частиц
     for (int i = 0; i < width; i++) {
         for (int j = 0; j < height; j++) {
             CAT_GetCell((char*)&cell, i, j);
-            uint8_t dir = cell.directions;
+            uint8_t b = cell.bits;
+            if (b == 0) continue;
+
+            // Расчет индексов соседей с периодическими граничными условиями (Тор)
+            // Или жесткими стенками (здесь сделаем жесткие стенки - поглощение)
             
-            if (dir == 0) continue;
-            
-            // Вправо
-            if ((dir & POS_RIGHT) && (i < width - 1))
-                next_grid[j * width + (i + 1)] |= POS_RIGHT;
-            if ((dir & NEG_RIGHT) && (i < width - 1))
-                next_grid[j * width + (i + 1)] |= NEG_RIGHT;
+            int i_next = i + 1;
+            int i_prev = i - 1;
+            int j_next = j + 1;
+            int j_prev = j - 1;
 
-            // Влево
-            if ((dir & POS_LEFT) && (i > 0))
-                next_grid[j * width + (i - 1)] |= POS_LEFT;
-            if ((dir & NEG_LEFT) && (i > 0))
-                next_grid[j * width + (i - 1)] |= NEG_LEFT;
+            // POSITIVE PARTICLES
+            if ((b & P_RIGHT) && (i_next < width))  next_grid[j * width + i_next] |= P_RIGHT;
+            if ((b & P_LEFT)  && (i_prev >= 0))     next_grid[j * width + i_prev] |= P_LEFT;
+            if ((b & P_DOWN)  && (j_next < height)) next_grid[j_next * width + i] |= P_DOWN;
+            if ((b & P_UP)    && (j_prev >= 0))     next_grid[j_prev * width + i] |= P_UP;
 
-            // Вниз
-            if ((dir & POS_DOWN) && (j < height - 1))
-                next_grid[(j + 1) * width + i] |= POS_DOWN;
-            if ((dir & NEG_DOWN) && (j < height - 1))
-                next_grid[(j + 1) * width + i] |= NEG_DOWN;
-
-            // Вверх
-            if ((dir & POS_UP) && (j > 0))
-                next_grid[(j - 1) * width + i] |= POS_UP;
-            if ((dir & NEG_UP) && (j > 0))
-                next_grid[(j - 1) * width + i] |= NEG_UP;
+            // NEGATIVE PARTICLES
+            if ((b & N_RIGHT) && (i_next < width))  next_grid[j * width + i_next] |= N_RIGHT;
+            if ((b & N_LEFT)  && (i_prev >= 0))     next_grid[j * width + i_prev] |= N_LEFT;
+            if ((b & N_DOWN)  && (j_next < height)) next_grid[j_next * width + i] |= N_DOWN;
+            if ((b & N_UP)    && (j_prev >= 0))     next_grid[j_prev * width + i] |= N_UP;
         }
     }
 
-    // Шаг 2: Записываем обратно
+    // 2. Запись обратно в CAT
     for (int i = 0; i < width; i++) {
         for (int j = 0; j < height; j++) {
-            cell.directions = next_grid[j * width + i];
+            cell.bits = next_grid[j * width + i];
             CAT_PutCell((char*)&cell, i, j);
         }
     }
@@ -130,46 +98,50 @@ void transportParticles(int width, int height)
     free(next_grid);
 }
 
-// === ИЗМЕНЕННАЯ ФУНКЦИЯ MAIN ===
 int main(int argc, char *argv[])
 {
-    if (argc != 4) {
+    if(argc != 4) {
         printf("usage: %s file_in file_out num_of_iters\n", argv[0]);
         return 1;
     }
 
     long itersNumber = strtol(argv[3], NULL, 10);
 
-    printf("Loading input file: %s\n", argv[1]);
+    printf("Loading: %s\n", argv[1]);
     if (CAT_InitSimulator(argv[1]) != 0) {
-        printf("Error initializing simulator\n");
+        printf("Error: can't read input file\n");
         return 1;
     }
 
-    // ИСПРАВЛЕНИЕ: Используем CAT_GetArraySize вместо CAT_GetMaxI
+    // Получаем размеры. 
+    // Внимание: используем CAT_GetArraySize, так как она надежнее в вашей версии
     CAT_Index size = CAT_GetArraySize();
-    int width = size.i;
-    int height = size.j;
+    int I = size.i;
+    int J = size.j;
 
-    printf("Grid Size: %dx%d. Starting %ld iterations...\n", width, height, itersNumber);
+    printf("Grid: %dx%d, Iters: %ld\n", I, J, itersNumber);
 
     clock_t t1 = clock();
-
-    for (int iter = 0; iter < itersNumber; iter++)
+    
+    // ОСНОВНОЙ ЦИКЛ
+    for (int i = 0; i < itersNumber; i++)
     {
-        if (itersNumber > PROGRESS_BAR && iter % (itersNumber / PROGRESS_BAR) == 0) {
-            printf(".");
-            fflush(stdout);
-        }
+        // 1. COLLISION (Локально)
+        CAT_Iterate(collision);
 
-        applyCollisions(width, height);
-        transportParticles(width, height);
+        // 2. PROPAGATION (Глобально)
+        propagation_step(I, J);
+
+        if (i % 10 == 0) { // Прогресс бар
+             // можно добавить вывод
+        }
     }
 
     clock_t t2 = clock();
-    printf("\nTime = %g s\n", (double)(t2 - t1) / CLOCKS_PER_SEC);
+    double tDiff = (double)(t2 - t1) / CLOCKS_PER_SEC;
+    printf("\nTime = %g s\n", tDiff);
 
-    printf("Saving output file: %s\n", argv[2]);
+    printf("Saving: %s\n", argv[2]);
     if (CAT_FinalizeSimulator(argv[2]) != 0) {
         printf("Error writing output\n");
         return 1;
