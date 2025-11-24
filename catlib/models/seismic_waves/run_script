@@ -1,0 +1,29 @@
+#!/bin/bash
+
+
+
+if [ $# -ne 1 ]; then
+    echo "Usage: $0  iterations"
+    exit 1
+fi
+
+
+ITERATIONS=$1
+
+echo "Starting live seismic simulation..."
+echo "Iterations: $ITERATIONS"
+
+./catmdl_seismic_waves_prep 
+./catmdl_seismic_waves_sim initial_state.dat state.dat 1
+sleep 2
+./catmdl_seismic_waves_post state.dat 
+for (( var1 = 1; var1 < $ITERATIONS; var1++ ))
+do
+./catmdl_seismic_waves_sim state.dat state.dat 3
+sleep 1
+./catmdl_seismic_waves_post state.dat 
+echo "Iteration number: $var1"
+
+done
+
+echo "Simulation completed!"
