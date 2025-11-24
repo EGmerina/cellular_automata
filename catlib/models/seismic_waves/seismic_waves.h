@@ -3,24 +3,19 @@
 
 #include <stdint.h>
 
-// Используем структуру для описания ячейки.
-// В модели HPP 4 направления. У нас 2 типа частиц (+ и -).
-// Итого 8 бит.
 typedef struct {
     uint8_t bits; 
-    // биты 0-3: положительные частицы (Right, Up, Left, Down)
+    // биты 0-3: положительные частицы 
     // биты 4-7: отрицательные частицы
 } cellBody;
 
 const int cellSize = sizeof(cellBody);
 
-// Маски направлений для положительных частиц
 #define P_RIGHT 0x01
 #define P_UP    0x02
 #define P_LEFT  0x04
 #define P_DOWN  0x08
 
-// Маски направлений для отрицательных частиц (сдвиг на 4)
 #define N_RIGHT 0x10
 #define N_UP    0x20
 #define N_LEFT  0x40

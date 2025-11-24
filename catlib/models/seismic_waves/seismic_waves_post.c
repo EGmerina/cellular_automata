@@ -23,7 +23,6 @@ int main(int argc, char *argv[])
     sprintf(filename, "%s.pgm", argv[1]);
     FILE *f = fopen(filename, "w");
     
-    // Заголовок PGM (GrayScale)
     fprintf(f, "P2\n%d %d\n255\n", width, height);
 
     cellBody cell;
@@ -32,21 +31,21 @@ int main(int argc, char *argv[])
         for (int i = 0; i < width; i++) {
             CAT_GetCell((char*)&cell, i, j);
             
-            // Считаем количество положительных частиц
+    
             int n_pos = 0;
             if (cell.bits & P_RIGHT) n_pos++;
             if (cell.bits & P_UP)    n_pos++;
             if (cell.bits & P_LEFT)  n_pos++;
             if (cell.bits & P_DOWN)  n_pos++;
 
-            // Считаем количество отрицательных частиц
+
             int n_neg = 0;
             if (cell.bits & N_RIGHT) n_neg++;
             if (cell.bits & N_UP)    n_neg++;
             if (cell.bits & N_LEFT)  n_neg++;
             if (cell.bits & N_DOWN)  n_neg++;
 
-            // Амплитуда P-волны = (N+ - N-)
+           
             // Чтобы отобразить это в 0-255, делаем смещение.
             // 128 - ноль. Больше - положительная амплитуда, меньше - отрицательная.
             int val = 128 + (n_pos - n_neg) * 30; // 30 - коэффициент контраста
@@ -60,7 +59,7 @@ int main(int argc, char *argv[])
     }
 
     fclose(f);
-    CAT_FinalizePostprocessor(NULL); // NULL если не нужно сохранять новый cat файл
+    CAT_FinalizePostprocessor(NULL); 
     printf("Generated %s\n", filename);
     return 0;
 }
