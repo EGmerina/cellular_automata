@@ -23,7 +23,6 @@ int main(int argc, char *argv[])
     sprintf(filename, "%s.pgm", argv[1]);
     FILE *f = fopen(filename, "w");
     
-    // PGM header
     fprintf(f, "P2\n%d %d\n255\n", width, height);
 
     cellBody cell;
@@ -33,9 +32,7 @@ int main(int argc, char *argv[])
             CAT_GetCell((char*)&cell, i, j);
             
             double val = cell.u;
-            
-            // Масштабирование для визуализации
-            // Считаем, что амплитуда обычно мала, умножаем на 50 для контраста
+        
             int pixel = 128 + (int)(val * 50.0);
 
             if (pixel < 0) pixel = 0;
