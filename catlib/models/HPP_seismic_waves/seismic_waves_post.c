@@ -74,3 +74,4 @@ int main(int argc, char *argv[])
     printf("Generated %s\n", filename);
     return 0;
 }
+

@@ -19,7 +19,12 @@ sleep 2
 ./catmdl_seismic_waves_post state.dat 
 for (( var1 = 1; var1 < $ITERATIONS; var1++ ))
 do
-./catmdl_seismic_waves_sim state.dat state.dat 10
+if (( $var1 % 10 == 0 )); then
+   ./catmdl_seismic_waves_sim state.dat state.dat 10 oscillation
+else
+   ./catmdl_seismic_waves_sim state.dat state.dat 10
+fi
+
 sleep 1
 ./catmdl_seismic_waves_post state.dat 
 echo "Iteration number: $var1"
