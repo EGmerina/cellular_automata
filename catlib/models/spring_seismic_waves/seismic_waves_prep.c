@@ -10,8 +10,8 @@ int main(int argc, char *argv[])
     const double Kl = 1.0;
 
     CAT_Coord coordMax;
-    coordMax.x = 400.0;
-    coordMax.y = 400.0;
+    coordMax.x = 512.0;
+    coordMax.y = 512.0;
 
     CAT_Coord realCoord = CAT_InitPreprocessor(cellSize, globalSize, Kl, coordMax);
 
@@ -47,19 +47,33 @@ int main(int argc, char *argv[])
             {
                 cell.velocity_sqr = alpha1;
             }
-            else
-            {
-                cell.velocity_sqr = alpha2;
-            }
+            // else
+            // {
+            //     cell.velocity_sqr = alpha2;
+            // }
 
-            // Источник волн
+            // // Источник волн
+            // int source_i = indexMax.i / 2;
+            // int source_j = indexMax.j / 2;
+            // double dist_sq = (double)((i - source_i) * (i - source_i) + (j - source_j) * (j - source_j));
+
+            // if (dist_sq < 32.0 * 32)
+            // {
+            //     // cell.u = 10.0 * exp(-dist_sq / 30.0); // Гауссов купол 10- амплитуда, 20 - ширина
+            //     cell.u = 10;
+            //     cell.u_prev = cell.u;
+            // }
+
+            // // Источник волн
+            int source_j = indexMax.j / 2;
             int source_i = indexMax.i / 2;
-            int source_j = indexMax.j / 3;
-            double dist_sq = (double)((i - source_i) * (i - source_i) + (j - source_j) * (j - source_j));
+            double dist_i = (double)(i - source_i) * (i - source_i);
+            double dist_j = (double)(j - source_j) * (j - source_j);
 
-            if (dist_sq < 100.0)
+            if (dist_i < (indexMax.i - 10) * (indexMax.i - 10) && dist_j < 1)
             {
-                cell.u = 10.0 * exp(-dist_sq / 20.0); // Гауссов купол 10- амплитуда, 20 - ширина
+                // cell.u = 10.0 * exp(-dist_sq / 30.0); // Гауссов купол 10- амплитуда, 20 - ширина
+                cell.u = 10;
                 cell.u_prev = cell.u;
             }
 

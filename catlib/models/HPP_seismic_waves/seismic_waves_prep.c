@@ -89,20 +89,36 @@ int main(int argc, char *argv[])
             {
                 set_cell(i, j, TYPE_MEDIUM, cell.bits);
             }
+
+            //  int dx = i - center_i;
+            // int dy = j - center_j;
+            // if (dy * dy <= radius * radius)
+            // {
+
+            //     cell.bits |= (P_RIGHT | P_UP | P_LEFT | P_DOWN);
+
+            //     cell.bits &= P_MASK;
+            //     set_cell(i, j, TYPE_SOURCE, cell.bits);
+            // }
+            // else
+            // {
+            //     set_cell(i, j, TYPE_MEDIUM, cell.bits);
+            // }
         }
     }
 
     // Верхняя граница - свободная
     for (int i = 0; i < I; i++)
     {
-        set_cell(i, 0, TYPE_WALL_FREE, 0);      
+        set_cell(i, 0, TYPE_WALL_FREE, 0);
         set_cell(i, J - 1, TYPE_WALL_SOLID, 0); // Низ (твердое дно)
+                                                // set_cell(i, J - 1, TYPE_WALL_FREE, 0);
     }
 
     // Боковые границы - твердые
     for (int j = 0; j < J; j++)
     {
-        set_cell(0, j, TYPE_WALL_SOLID, 0);   
+        set_cell(0, j, TYPE_WALL_SOLID, 0);
         set_cell(I - 1, j, TYPE_WALL_SOLID, 0);
     }
 
