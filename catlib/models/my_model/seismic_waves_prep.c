@@ -12,8 +12,8 @@ int main(int argc, char *argv[])
     const double Kl = 1.0;
 
     CAT_Coord coordMax;
-    coordMax.x = 511.0;
-    coordMax.y = 511.0;
+    coordMax.x = 1023.0;
+    coordMax.y = 1023.0;
 
     CAT_Coord realCoord = CAT_InitPreprocessor(cellSize, globalSize, Kl, coordMax);
 
