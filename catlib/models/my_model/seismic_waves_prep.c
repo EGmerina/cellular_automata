@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <limits.h>
 #include "catlib.h"
 #include "seismic_waves.h"
 
@@ -12,8 +13,8 @@ int main(int argc, char *argv[])
     const double Kl = 1.0;
 
     CAT_Coord coordMax;
-    coordMax.x = 1023.0;
-    coordMax.y = 1023.0;
+    coordMax.x = 511.0;
+    coordMax.y = 511.0;
 
     CAT_Coord realCoord = CAT_InitPreprocessor(cellSize, globalSize, Kl, coordMax);
 
@@ -41,13 +42,14 @@ int main(int argc, char *argv[])
         {
             cell.velocity = 340;
             cell.compression = 0;
-            cell.time_iteration = 0;
+            cell.time_iteration = INT32_MAX;
 
             int dx = i - center_i;
             int dy = j - center_j;
             if (dx * dx + dy * dy <= radius * radius)
             {
                 cell.compression = 30000;
+                cell.time_iteration = 0;
             }
             CAT_PutCell((char *)&cell, i, j);
         }

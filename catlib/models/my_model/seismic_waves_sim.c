@@ -8,10 +8,37 @@
 int propogation(void *n)
 {
     cellBody *cell = (cellBody *)n;
+    cellBody left_cell = cell[7];
+    cellBody right_cell = cell[3];
+    cellBody up_cell = cell[1];
+    cellBody down_cell = cell[5];
+
     int sum = -cell[0].compression;
-    for (int i = 1; i <= 8; i+=2)
+    int compression_direction_num = 1;
+
+    if (left_cell.time_iteration < cell->time_iteration)
     {
-        sum += cell[i].compression / 4;
+        sum += left_cell.compression / 4; // пока что делим на 4 так как непонятно как именно распределять энергию (пропорционально сжатиию?)
+    }
+    if (right_cell.time_iteration < cell->time_iteration)
+    {
+        sum += right_cell.compression / 4;
+    }
+    if (up_cell.time_iteration < cell->time_iteration)
+    {
+        sum += up_cell.compression / 4;
+    }
+    if (down_cell.time_iteration < cell->time_iteration)
+    {
+        sum += down_cell.compression / 4;
+    }
+    // for (int i = 1; i <= 8; i += 2)
+    // {
+    //     sum += cell[i].compression / 4;
+    // }
+    if (sum > 0) // если в клетку пришло сжатие, то волна движется в сторону этой клетки
+    {
+        cell[0].time_iteration = CAT_GetIterationsDone();
     }
     cell[0].compression = sum;
     return 0;
